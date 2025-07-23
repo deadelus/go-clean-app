@@ -7,9 +7,13 @@ import (
 )
 
 // SetLogger sets the logger for the Engine.
-func setZapLogger() Option {
+// NewZapLogger is a hook for zaplogger.NewLogger, can be replaced in tests.
+var NewZapLogger = zaplogger.NewLogger
+
+// SetZapLogger sets the logger for the Engine.
+func SetZapLogger() Option {
 	return func(e *Engine) error {
-		logger, closeLogger, err := zaplogger.NewLogger(
+		logger, closeLogger, err := NewZapLogger(
 			e.appName,
 			e.appVersion,
 			LoggerModeEnvName,

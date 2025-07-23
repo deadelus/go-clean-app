@@ -8,9 +8,16 @@ import (
 )
 
 // SetZapLoggerForCLI sets the logger for the Engine specifically for CLI applications.
-func setZapLoggerForCLI() Option {
+// NewZapLoggerForCLI is a hook for zap.NewDevelopmentConfig, can be replaced in tests.
+var NewZapLoggerForCLI = zap.NewDevelopmentConfig
+
+// GetFromExternalLogger is a hook for zaplogger.GetFromExternalLogger, can be replaced in tests.
+var GetFromExternalLogger = zaplogger.GetFromExternalLogger
+
+// SetZapLoggerForCLI sets the logger for the Engine specifically for CLI applications.
+func SetZapLoggerForCLI() Option {
 	return func(e *Engine) error {
-		config := zap.NewDevelopmentConfig()
+		config := NewZapLoggerForCLI()
 		l, err := config.Build(
 			zap.AddStacktrace(zap.PanicLevel),
 			zap.WithCaller(false),
@@ -20,7 +27,7 @@ func setZapLoggerForCLI() Option {
 			return fmt.Errorf("failed to create zap logger for CLI: %w", err)
 		}
 
-		logger, closeLogger, _ := zaplogger.GetFromExternalLogger(l)
+		logger, closeLogger, _ := GetFromExternalLogger(l)
 
 		// Set the logger in the Engine
 		e.logger = logger

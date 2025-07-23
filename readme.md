@@ -1,5 +1,9 @@
 # Go Clean App
 
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+[![Test Coverage](https://img.shields.io/badge/coverage-100.0%25-brightgreen)](https://github.com/deadelus/go-clean-app)
+[![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)](https://github.com/deadelus/go-clean-app)
+
 A Go library that provides a ready-to-use application architecture with lifecycle management, structured logging, and graceful shutdown.
 
 ## 📋 Table of Contents
@@ -46,6 +50,7 @@ func main() {
     app, err := application.New(
         application.AppNameEnvName,
         application.SetOptionVersion("1.0.0"),
+        application.SetZapLogger(),
     )
     if err != nil {
         log.Fatal(err)
@@ -85,6 +90,7 @@ func main() {
     app, err := application.New(
         "MY_APP_NAME", // Environment variable for the name
         application.SetVersionFromEnv(), // Version from APP_VERSION
+        application.SetZapLogger(),
     )
     if err != nil {
         log.Fatal(err)
@@ -138,6 +144,8 @@ func main() {
     app, err := application.New(
         "CLI_APP_NAME",
         application.SetOptionVersion("1.0.0"),
+        application.WithCLIMode(),
+        application.SetZapLoggerForCLI(),
     )
     if err != nil {
         log.Fatal(err)
@@ -171,6 +179,7 @@ func main() {
     app, err := application.New(
         "HTTP_SERVER_NAME",
         application.SetOptionVersion("1.0.0"),
+        application.SetZapLogger(),
     )
     if err != nil {
         log.Fatal(err)
@@ -299,8 +308,17 @@ go mod download
 ### Testing
 
 ```bash
-go test ./...
+go test -cover ./...
 ```
+
+### Test Coverage
+
+We aim for high test coverage to ensure the quality and reliability of the library. You can generate a coverage report using the following command:
+
+```bash
+go test -coverprofile=coverage.out ./... && go tool cover -html=coverage.out
+```
+
 
 ### Vendor
 

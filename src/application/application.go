@@ -47,6 +47,14 @@ type Engine struct {
 // Option is a function that configures the Engine.
 type Option func(*Engine) error
 
+// WithCLIMode is an option to set the application to run in CLI mode.
+func WithCLIMode() Option {
+	return func(e *Engine) error {
+		e.ctx = context.WithValue(e.ctx, "cli_mode", true)
+		return nil
+	}
+}
+
 // Force interface compliance
 // Ensure that Engine implements the Application interface.
 var _ Application = &Engine{}
@@ -90,20 +98,6 @@ func New(appNameEnvName string, version VersionOption, options ...Option) (*Engi
 
 	if err := version(engine); err != nil {
 		return nil, fmt.Errorf("failed to set application version: %w", err)
-	}
-
-	if engine.CLIMode() {
-		if err := setZapLoggerForCLI()(engine); err != nil {
-			return nil, fmt.Errorf("failed to set zap logger for cli: %w", err)
-		}
-	} else {
-		if err := setZapLogger()(engine); err != nil {
-			return nil, fmt.Errorf("failed to set zap logger: %w", err)
-		}
-	}
-
-	if err := setZapLoggerForCLI()(engine); err != nil {
-		return nil, fmt.Errorf("failed to set zap logger for cli: %w", err)
 	}
 
 	for _, option := range options {
@@ -150,4 +144,16 @@ func (e *Engine) CLIMode() bool {
 // Logger returns the logger instance for the application.
 func (e *Engine) Logger() logger.Logger {
 	return e.logger
+}
+
+// SetGracefull sets the lifecycle manager for the application engine.
+// This is primarily used for testing purposes.
+func (e *Engine) SetGracefull(l lifecycle.Lifecycle) {
+	e.gracefull = l
+}
+
+// SetContext sets the context for the application engine.
+// This is primarily used for testing purposes.
+func (e *Engine) SetContext(ctx context.Context) {
+	e.ctx = ctx
 }

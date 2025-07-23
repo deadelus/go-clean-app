@@ -12,7 +12,7 @@ import (
 // ZapLogger is a logger implementation using the zap logging library.
 // It implements the Logger interface defined in pkg/logger/logger.go.
 type ZapLogger struct {
-	logger *zap.Logger
+	Logger *zap.Logger
 }
 
 type Gracefull func() error
@@ -55,14 +55,14 @@ func NewLogger(
 
 	logger, err := config.Build(zapOptions...)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to create zap logger: %w", err)
+		return nil, nil, fmt.Errorf("failed to create zap Logger: %w", err)
 	}
 
 	logger = logger.Named(appName).With(
 		zap.String("app_version", appVersion),
 		zap.String("go_version", runtime.Version()))
 
-	zl := &ZapLogger{logger: logger}
+	zl := &ZapLogger{Logger: logger}
 
 	gracefull := func() error {
 		zl.Close()
@@ -74,7 +74,7 @@ func NewLogger(
 
 // GetFromExternalZapLogger sets the zap logger for the ZapLogger instance.
 func GetFromExternalLogger(logger *zap.Logger) (*ZapLogger, Gracefull, error) {
-	zl := &ZapLogger{logger: logger}
+	zl := &ZapLogger{Logger: logger}
 
 	gracefull := func() error {
 		zl.Close()
@@ -86,22 +86,22 @@ func GetFromExternalLogger(logger *zap.Logger) (*ZapLogger, Gracefull, error) {
 
 // Info logs an info message with the provided fields.
 func (z *ZapLogger) Info(msg string, fields ...any) {
-	z.logger.Info(msg, convertToZapFields(fields...)...)
+	z.Logger.Info(msg, ConvertToZapFields(fields...)...)
 }
 
 // Error logs an error message with the provided fields.
 func (z *ZapLogger) Error(msg string, fields ...any) {
-	z.logger.Error(msg, convertToZapFields(fields...)...)
+	z.Logger.Error(msg, ConvertToZapFields(fields...)...)
 }
 
 // Debug logs a debug message with the provided fields.
 func (z *ZapLogger) Debug(msg string, fields ...any) {
-	z.logger.Debug(msg, convertToZapFields(fields...)...)
+	z.Logger.Debug(msg, ConvertToZapFields(fields...)...)
 }
 
 // Warn logs a warning message with the provided fields.
 func (z *ZapLogger) Warn(msg string, fields ...any) {
-	z.logger.Warn(msg, convertToZapFields(fields...)...)
+	z.Logger.Warn(msg, ConvertToZapFields(fields...)...)
 }
 
 // Close flushes the logger and releases any resources.
@@ -109,13 +109,13 @@ func (z *ZapLogger) Warn(msg string, fields ...any) {
 // If there is an error during flushing, it logs the error using the zap logger.
 // This method should be called when the application is shutting down to ensure proper cleanup.
 func (z *ZapLogger) Close() {
-	if err := z.logger.Sync(); err != nil {
-		z.logger.Error("Failed to stop logger", zap.Error(err))
+	if err := z.Logger.Sync(); err != nil {
+		z.Logger.Error("Failed to stop logger", zap.Error(err))
 	}
 }
 
-// convertToZapFields converts various field types to zap.Field
-func convertToZapFields(fields ...any) []zap.Field {
+// ConvertToZapFields converts various field types to zap.Field
+func ConvertToZapFields(fields ...any) []zap.Field {
 	var zapFields []zap.Field
 
 	for _, field := range fields {
@@ -127,7 +127,7 @@ func convertToZapFields(fields ...any) []zap.Field {
 
 		// Si c'est une map[string]interface{} ou map[string]any
 		if m, ok := field.(map[string]interface{}); ok {
-			zapFields = append(zapFields, convertMapToZapFields(m)...)
+			zapFields = append(zapFields, ConvertMapToZapFields(m)...)
 			continue
 		}
 
@@ -136,7 +136,7 @@ func convertToZapFields(fields ...any) []zap.Field {
 			for k, v := range m {
 				converted[k] = v
 			}
-			zapFields = append(zapFields, convertMapToZapFields(converted)...)
+			zapFields = append(zapFields, ConvertMapToZapFields(converted)...)
 			continue
 		}
 
@@ -147,8 +147,8 @@ func convertToZapFields(fields ...any) []zap.Field {
 	return zapFields
 }
 
-// convertMapToZapFields convertit une map en slice de zap.Field
-func convertMapToZapFields(m map[string]interface{}) []zap.Field {
+// ConvertMapToZapFields convertit une map en slice de zap.Field
+func ConvertMapToZapFields(m map[string]interface{}) []zap.Field {
 	var fields []zap.Field
 
 	for key, value := range m {
