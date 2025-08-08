@@ -109,9 +109,7 @@ func (z *ZapLogger) Warn(msg string, fields ...any) {
 // If there is an error during flushing, it logs the error using the zap logger.
 // This method should be called when the application is shutting down to ensure proper cleanup.
 func (z *ZapLogger) Close() {
-	if err := z.Logger.Sync(); err != nil {
-		z.Logger.Error("Failed to stop logger", zap.Error(err))
-	}
+	z.Logger.Sync()
 }
 
 // ConvertToZapFields converts various field types to zap.Field
