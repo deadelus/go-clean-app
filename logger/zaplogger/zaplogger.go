@@ -3,7 +3,6 @@ package zaplogger
 
 import (
 	"fmt"
-	"os"
 	"runtime"
 
 	"go.uber.org/zap"
@@ -17,40 +16,41 @@ type ZapLogger struct {
 
 type Gracefull func() error
 
+// BuildConfig is a helper to allow testing config.Build() errors
+var BuildConfig = func(appDebug bool) zap.Config {
+	if appDebug {
+		return zap.NewDevelopmentConfig()
+	}
+	return zap.NewProductionConfig()
+}
+
 // NewZapLogger creates a new ZapLogger instance.
 // It initializes the zap logger and returns a ZapLogger instance.
 // If there is an error during initialization, it returns the error.
 func NewLogger(
 	appName string,
 	appVersion string,
-	loggerModeEnvName string,
+	appEnv string,
+	appDebug bool,
 ) (*ZapLogger, Gracefull, error) {
 
-	modeStr := os.Getenv(loggerModeEnvName)
-	var debugMode bool
-
-	switch modeStr {
+	switch appEnv {
 	case "development", "dev":
 		fmt.Println("Logger mode set to development")
-		debugMode = true
 	case "production", "prod":
 		fmt.Println("Logger mode set to production")
-		debugMode = false
 	default:
 		fmt.Println("Logger mode not set or invalid, defaulting to development")
-		debugMode = true
+		appEnv = "development"
 	}
 
-	var config zap.Config
+	config := BuildConfig(appDebug)
 	var zapOptions []zap.Option
 
 	zapOptions = append(zapOptions, zap.AddStacktrace(zap.PanicLevel))
 
-	if debugMode {
-		config = zap.NewDevelopmentConfig()
+	if appDebug {
 		zapOptions = append(zapOptions, zap.WithCaller(false))
-	} else {
-		config = zap.NewProductionConfig()
 	}
 
 	logger, err := config.Build(zapOptions...)
@@ -60,6 +60,8 @@ func NewLogger(
 
 	logger = logger.Named(appName).With(
 		zap.String("app_version", appVersion),
+		zap.String("app_env", appEnv),
+		zap.Bool("app_debug", appDebug),
 		zap.String("go_version", runtime.Version()))
 
 	zl := &ZapLogger{Logger: logger}
@@ -123,18 +125,9 @@ func ConvertToZapFields(fields ...any) []zap.Field {
 			continue
 		}
 
-		// Si c'est une map[string]interface{} ou map[string]any
-		if m, ok := field.(map[string]interface{}); ok {
-			zapFields = append(zapFields, ConvertMapToZapFields(m)...)
-			continue
-		}
-
+		// Si c'est une map[string]any
 		if m, ok := field.(map[string]any); ok {
-			converted := make(map[string]interface{})
-			for k, v := range m {
-				converted[k] = v
-			}
-			zapFields = append(zapFields, ConvertMapToZapFields(converted)...)
+			zapFields = append(zapFields, ConvertMapToZapFields(m)...)
 			continue
 		}
 

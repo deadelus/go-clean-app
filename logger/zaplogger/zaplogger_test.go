@@ -6,7 +6,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/deadelus/go-clean-app/src/logger/zaplogger"
+	"github.com/deadelus/go-clean-app/v2/logger/zaplogger"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
@@ -15,10 +15,10 @@ import (
 
 func TestNewLogger(t *testing.T) {
 	t.Run("development mode", func(t *testing.T) {
-		os.Setenv("LOGGER_MODE", "development")
-		defer os.Unsetenv("LOGGER_MODE")
+		os.Setenv("APP_ENV", "development")
+		defer os.Unsetenv("APP_ENV")
 
-		logger, graceful, err := zaplogger.NewLogger("test-app", "v1.0.0", "LOGGER_MODE")
+		logger, graceful, err := zaplogger.NewLogger("test-app", "v1.0.0", "development", true)
 		require.NoError(t, err)
 		require.NotNil(t, logger)
 		require.NotNil(t, graceful)
@@ -28,10 +28,10 @@ func TestNewLogger(t *testing.T) {
 	})
 
 	t.Run("production mode", func(t *testing.T) {
-		os.Setenv("LOGGER_MODE", "production")
-		defer os.Unsetenv("LOGGER_MODE")
+		os.Setenv("APP_ENV", "production")
+		defer os.Unsetenv("APP_ENV")
 
-		logger, graceful, err := zaplogger.NewLogger("test-app", "v1.0.0", "LOGGER_MODE")
+		logger, graceful, err := zaplogger.NewLogger("test-app", "v1.0.0", "production", false)
 		require.NoError(t, err)
 		require.NotNil(t, logger)
 		require.NotNil(t, graceful)
@@ -41,9 +41,7 @@ func TestNewLogger(t *testing.T) {
 	})
 
 	t.Run("default mode", func(t *testing.T) {
-		os.Unsetenv("LOGGER_MODE")
-
-		logger, graceful, err := zaplogger.NewLogger("test-app", "v1.0.0", "LOGGER_MODE")
+		logger, graceful, err := zaplogger.NewLogger("test-app", "v1.0.0", "dummy-value", false)
 		require.NoError(t, err)
 		require.NotNil(t, logger)
 		require.NotNil(t, graceful)
@@ -174,4 +172,23 @@ func TestConvertMapToZapFields(t *testing.T) {
 	for _, expected := range expectedFields {
 		assert.Contains(t, fields, expected)
 	}
+}
+
+func TestNewLogger_Error(t *testing.T) {
+	// Save original BuildConfig
+	original := zaplogger.BuildConfig
+	defer func() { zaplogger.BuildConfig = original }()
+
+	// Force an error by providing an invalid encoding
+	zaplogger.BuildConfig = func(appDebug bool) zap.Config {
+		config := zap.NewProductionConfig()
+		config.Encoding = "invalid-encoding"
+		return config
+	}
+
+	logger, graceful, err := zaplogger.NewLogger("test-app", "v1.0.0", "production", false)
+	assert.Error(t, err)
+	assert.Nil(t, logger)
+	assert.Nil(t, graceful)
+	assert.Contains(t, err.Error(), "failed to create zap Logger")
 }

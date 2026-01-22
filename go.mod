@@ -1,4 +1,4 @@
-module github.com/deadelus/go-clean-app
+module github.com/deadelus/go-clean-app/v2
 
 go 1.24.5
 

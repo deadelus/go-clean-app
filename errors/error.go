@@ -1,5 +1,5 @@
-// Package cerr provides custom error types for the application.
-package cerr
+// Package errors provides custom error types for the application.
+package errors
 
 const (
 	ErrMissingConfig = "missing configuration"

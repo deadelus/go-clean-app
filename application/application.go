@@ -3,14 +3,12 @@ package application
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
 
-	"github.com/deadelus/go-clean-app/src/lifecycle"
-	"github.com/deadelus/go-clean-app/src/logger"
-	"github.com/joho/godotenv"
+	"github.com/deadelus/go-clean-app/v2/lifecycle"
+	"github.com/deadelus/go-clean-app/v2/logger"
 )
 
 const (
@@ -20,12 +18,16 @@ const (
 	AppVersionEnvName = "APP_VERSION"
 	// LoggerModeEnvName is the environment variable name for the logger mode.s
 	LoggerModeEnvName = "APP_ENV"
+	// AppDebugEnvName is the environment variable name for the debug mode.
+	AppDebugEnvName = "APP_DEBUG"
 )
 
 // Application interface defines the methods for the application context.
 type Application interface {
 	Name() string
 	Version() string
+	Env() string
+	Debug() bool
 	Context() context.Context
 	Gracefull() lifecycle.Lifecycle
 	Logger() logger.Logger
@@ -38,21 +40,11 @@ type Application interface {
 // It also handles graceful shutdown and signal handling.
 // The Engine can be extended with additional options for configuration.
 type Engine struct {
-	appName, appVersion string
-	ctx                 context.Context
-	gracefull           lifecycle.Lifecycle
-	logger              logger.Logger
-}
-
-// Option is a function that configures the Engine.
-type Option func(*Engine) error
-
-// WithCLIMode is an option to set the application to run in CLI mode.
-func WithCLIMode() Option {
-	return func(e *Engine) error {
-		e.ctx = context.WithValue(e.ctx, "cli_mode", true)
-		return nil
-	}
+	appName, appVersion, appEnv string
+	appDebug                    bool
+	ctx                         context.Context
+	gracefull                   lifecycle.Lifecycle
+	logger                      logger.Logger
 }
 
 // Force interface compliance
@@ -62,12 +54,7 @@ var _ Application = &Engine{}
 // New creates a new Engine instance with the specified application name and version.
 // It initializes the context, logger, and graceful shutdown manager.
 // It also sets up signal handling for graceful shutdown.
-func New(appNameEnvName string, version VersionOption, options ...Option) (*Engine, error) {
-	// Load environment variables from .env file
-	if err := godotenv.Load(); err != nil {
-		fmt.Println("Error loading .env file:", err)
-	}
-
+func New(options ...Option) (*Engine, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	c := make(chan os.Signal, 1)
@@ -83,27 +70,25 @@ func New(appNameEnvName string, version VersionOption, options ...Option) (*Engi
 		}
 	}()
 
-	var appName string
-	if appNameEnv := os.Getenv(appNameEnvName); appNameEnv != "" {
-		appName = appNameEnv
-	} else {
-		appName = "application"
-	}
-
 	engine := &Engine{
-		appName:   appName,
 		ctx:       ctx,
 		gracefull: lifecycle.NewGracefullShutdown(ctx),
 	}
 
-	if err := version(engine); err != nil {
-		return nil, fmt.Errorf("failed to set application version: %w", err)
+	for _, option := range options {
+		option(engine)
 	}
 
-	for _, option := range options {
-		if err := option(engine); err != nil {
-			return nil, fmt.Errorf("failed to apply option: %w", err)
-		}
+	if engine.appName == "" {
+		engine.appName = "application"
+	}
+
+	if engine.appVersion == "" {
+		engine.appVersion = "0.1.0"
+	}
+
+	if engine.appEnv == "" {
+		engine.appEnv = "development"
 	}
 
 	return engine, nil
@@ -112,6 +97,21 @@ func New(appNameEnvName string, version VersionOption, options ...Option) (*Engi
 // Name returns the name of the application.
 func (e *Engine) Name() string {
 	return e.appName
+}
+
+// Version returns the version of the application.
+func (e *Engine) Version() string {
+	return e.appVersion
+}
+
+// Env returns the environment of the application.
+func (e *Engine) Env() string {
+	return e.appEnv
+}
+
+// Debug returns whether the application is in debug mode.
+func (e *Engine) Debug() bool {
+	return e.appDebug
 }
 
 // Context returns the context of the application.
@@ -146,14 +146,17 @@ func (e *Engine) Logger() logger.Logger {
 	return e.logger
 }
 
+// SetLogger sets the logger for the application engine.
+func (e *Engine) SetLogger(l logger.Logger) {
+	e.logger = l
+}
+
 // SetGracefull sets the lifecycle manager for the application engine.
-// This is primarily used for testing purposes.
 func (e *Engine) SetGracefull(l lifecycle.Lifecycle) {
 	e.gracefull = l
 }
 
 // SetContext sets the context for the application engine.
-// This is primarily used for testing purposes.
 func (e *Engine) SetContext(ctx context.Context) {
 	e.ctx = ctx
 }
