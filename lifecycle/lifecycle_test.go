@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"testing"
-	"time"
 
 	"github.com/deadelus/go-clean-app/v2/lifecycle"
 	"github.com/stretchr/testify/assert"
@@ -37,8 +36,7 @@ func TestGracefull_Shutdown(t *testing.T) {
 
 	cancel()
 
-	// Wait a bit for the goroutine to catch the cancel
-	time.Sleep(100 * time.Millisecond)
+	<-g.Done() // wait for shutdown to complete
 	assert.True(t, called)
 }
 
@@ -54,6 +52,5 @@ func TestGracefull_Shutdown_Error(t *testing.T) {
 
 	cancel()
 
-	// Wait a bit
-	time.Sleep(100 * time.Millisecond)
+	<-g.Done() // wait for shutdown to complete
 }

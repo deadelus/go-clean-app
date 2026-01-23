@@ -9,6 +9,7 @@ import (
 
 // Lifecycle interface defines methods for managing application lifecycle events.
 type Lifecycle interface {
+	Done() <-chan struct{}
 	Register(name string, gracefull func() error) error
 }
 
@@ -16,6 +17,11 @@ type Lifecycle interface {
 type Gracefull struct {
 	functions map[string]func() error
 	done      chan struct{}
+}
+
+// Done returns a channel that is closed when the graceful shutdown is complete.
+func (g *Gracefull) Done() <-chan struct{} {
+	return g.done
 }
 
 // NewGracefullShutdown is the constructor of the shutdown ochestrator.
@@ -43,24 +49,24 @@ func (g *Gracefull) Register(name string, gracefull func() error) error {
 }
 
 // gracefullAll executes all registered functions in the order they were added.
-func (life *Gracefull) gracefullAll() {
+func (g *Gracefull) gracefullAll() {
 	log.Println("Shutting down in progress...")
 
 	wg := &sync.WaitGroup{}
-	for name, gracefullFunc := range life.functions {
+	for name, gracefullFunc := range g.functions {
 		wg.Add(1)
 		k, v := name, gracefullFunc
-		go life.gracefullOne(wg, k, v)
+		go g.gracefullOne(wg, k, v)
 	}
 	wg.Wait()
 
 	log.Println("Shutdown is over.")
 
-	life.done <- struct{}{}
+	g.done <- struct{}{}
 }
 
 // gracefullOne executes a single registered function and logs any errors.
-func (life *Gracefull) gracefullOne(wg *sync.WaitGroup, name string, gracefullFunc func() error) {
+func (g *Gracefull) gracefullOne(wg *sync.WaitGroup, name string, gracefullFunc func() error) {
 	defer wg.Done()
 
 	if err := gracefullFunc(); err != nil {

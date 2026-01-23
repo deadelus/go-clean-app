@@ -41,6 +41,7 @@ package main
 import (
 	"fmt"
 	"github.com/deadelus/go-clean-app/v2/application"
+	"github.com/deadelus/go-clean-app/v2/lifecycle"
 	"github.com/deadelus/go-clean-app/v2/logger/zaplogger"
 )
 
@@ -72,6 +73,10 @@ func main() {
 	// The engine automatically listens for SIGINT/SIGTERM
 	// Block until shutdown happens
 	<-app.Context().Done()
+
+	// Wait for graceful shutdown to complete (recommended)
+	<-app.Gracefull().Done()
+	
 	app.Logger().Info("Shutdown complete")
 }
 ```
@@ -115,18 +120,19 @@ The library follows clean architecture principles by decoupling the core engine 
 
 ```go
 type Application interface {
-	Gracefull() *lifecycle.Lifecycle
+	Gracefull() lifecycle.Lifecycle
 	Logger() logger.Logger
-	AppName() string
+	Name() string
 	Version() string
 	Env() string
 	Debug() bool
+	Context() context.Context
 }
 ```
 
 ### Engine Methods
 
-- `Gracefull()`: Returns the `Lifecycle` manager to register shutdown hooks.
+- `Gracefull()`: Returns the `Lifecycle` manager to register shutdown hooks and wait for shutdown completion (with `Done()`).
 - `Context()`: Returns the application context that is canceled when the app shuts down.
 - `Logger()`: Returns the configured logger instance.
 

@@ -14,6 +14,20 @@ import (
 	"go.uber.org/zap"
 )
 
+type mockLifecycle struct {
+	err error
+}
+
+func (m *mockLifecycle) Register(name string, fn func() error) error {
+	return m.err
+}
+
+func (m *mockLifecycle) Done() <-chan struct{} {
+	ch := make(chan struct{})
+	close(ch)
+	return ch
+}
+
 func TestNew(t *testing.T) {
 	t.Run("successful creation with option", func(t *testing.T) {
 		app, err := application.New(
@@ -83,10 +97,6 @@ func TestSignalHandling(t *testing.T) {
 	}
 }
 
-type mockLifecycle struct {
-	err error
-}
-
 func TestEngine_SetContext(t *testing.T) {
 	app, err := application.New(zaplogger.SetZapLogger())
 	require.NoError(t, err)
@@ -99,11 +109,6 @@ func TestEngine_SetContext(t *testing.T) {
 	assert.NotEqual(t, originalCtx, app.Context())
 	assert.Equal(t, "test_value", app.Context().Value("test_key"))
 }
-func (m *mockLifecycle) Register(name string, fn func() error) error {
-	return m.err
-}
-
-func (m *mockLifecycle) Shutdown() {}
 
 func TestLoggerRegistrationErrors(t *testing.T) {
 	mockErr := errors.New("mock error")
