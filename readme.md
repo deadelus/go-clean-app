@@ -1,10 +1,10 @@
 # Go Clean App
 
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
-[![Test Coverage](https://img.shields.io/badge/coverage-100.0%25-brightgreen)](https://github.com/deadelus/go-clean-app)
-[![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)](https://github.com/deadelus/go-clean-app)
+[![Go Report Card](https://goreportcard.com/badge/github.com/deadelus/go-clean-app)](https://goreportcard.com/report/github.com/deadelus/go-clean-app)
+[![Version](https://img.shields.io/badge/version-2.1.0-blue.svg)](https://github.com/deadelus/go-clean-app)
 
-A lightweight Go library providing a robust application skeleton with lifecycle management, structured logging, and graceful shutdown capabilities.
+A lightweight Go library providing a robust application skeleton with lifecycle management, structured logging, and graceful shutdown capabilities. Built for modern Go services, it helps you focus on your business logic while handling the "plumbing" of a production-ready application.
 
 ## 📋 Table of Contents
 
@@ -12,8 +12,8 @@ A lightweight Go library providing a robust application skeleton with lifecycle 
 - [Installation](#installation)
 - [Quick Start](#quick-start)
 - [Configuration](#configuration)
-- [Architecture](#architecture)
-- [API Reference](#api-reference)
+- [Transport Adapters](#transport-adapters)
+- [Project Structure](#project-structure)
 - [License](#license)
 
 ## ✨ Features
@@ -23,72 +23,34 @@ A lightweight Go library providing a robust application skeleton with lifecycle 
 - **Structured Logging**: Decoupled logger interface with a production-ready Zap implementation.
 - **Functional Options**: Clean and extensible configuration via the options pattern.
 - **Environment Management**: Categorize your app lifecycle (Development, Staging, Production, Testing).
-- **No Side-Effects**: Explicit initialization without magic global states or automatic file loading.
+- **Transport Abstraction**: Easily run your application as a local HTTP server or an AWS Lambda function.
+- **Explicit over Magic**: No side-effects, no global states, and no automatic file loading.
 
 ## 🚀 Installation
 
 ```bash
-go get github.com/deadelus/go-clean-app
+go get github.com/deadelus/go-clean-app/v2
 ```
 
 ## 🏃 Quick Start
 
 ### Basic Server Application
 
-```go
-package main
+See [main.go](main.go) for a complete example. You can run it with:
 
-import (
-	"fmt"
-	"github.com/deadelus/go-clean-app/v2/application"
-	"github.com/deadelus/go-clean-app/v2/lifecycle"
-	"github.com/deadelus/go-clean-app/v2/logger/zaplogger"
-)
-
-func main() {
-	// Initialize the application engine with options
-	app := application.New(
-		application.AppName("my-service"),
-		application.Version("1.0.0"),
-		application.Env(application.EnvDevelopment),
-		application.Debug(true),
-		zaplogger.SetZapLogger(), // Configure Zap as the logger
-	)
-
-	// Access common properties
-	app.Logger().Info(fmt.Sprintf("Starting %s (%s)", app.AppName(), app.Version()))
-
-	// Register components for graceful shutdown
-	app.Gracefull().Register("database", func() error {
-		fmt.Println("Closing database connections...")
-		return nil
-	})
-
-	// Run your logic using the application context
-	go func() {
-		app.Logger().Info("Application is running...")
-		// Use app.Context() for cancellation propagation
-	}()
-
-	// The engine automatically listens for SIGINT/SIGTERM
-	// Block until shutdown happens
-	<-app.Context().Done()
-
-	// Wait for graceful shutdown to complete (recommended)
-	<-app.Gracefull().Done()
-	
-	app.Logger().Info("Shutdown complete")
-}
+```bash
+go run .
 ```
 
 ### CLI Application
 
-For CLI tools, you can use a optimized logger configuration:
+For CLI tools, use the optimized CLI logger which provides a cleaner output:
 
 ```go
-app := application.New(
+app, _ := application.New(
     application.AppName("my-cli"),
     zaplogger.SetZapLoggerForCLI(),
+    application.WithCLIMode(),
 )
 ```
 
@@ -96,45 +58,43 @@ app := application.New(
 
 Configuration is managed through functional options passed to `application.New()`:
 
-| Option | Description |
-|--------|-------------|
-| `application.AppName(string)` | Sets the application name. |
-| `application.Version(string)` | Sets the application version. |
-| `application.Env(string)` | Sets the environment (Development, Production, etc.). |
-| `application.Debug(bool)` | Enables/disables debug mode. |
-| `zaplogger.SetZapLogger()` | Attaches a Zap-based structured logger. |
-| `zaplogger.SetZapLoggerForCLI()` | Attaches a Zap logger optimized for CLI output. |
+| Option | Description | Default |
+|--------|-------------|---------|
+| `AppName(string)` | Sets the application name. | `"application"` |
+| `Version(string)` | Sets the application version. | `"2.1.0"` |
+| `Env(string)` | Sets the environment (use `application.EnvDevelopment`, etc.). | `application.EnvDevelopment` |
+| `Debug(bool)` | Enables/disables debug mode. | `false` |
+| `WithCLIMode()` | Opt-in for CLI-specific behavior. | `false` |
+| `zaplogger.SetZapLogger()` | Attaches a Zap-based structured logger. | - |
+| `zaplogger.SetZapLoggerForCLI()` | Attaches a Zap logger optimized for CLI. | - |
 
-## 🏗 Architecture
+## 🌐 Transport Adapters
 
-The library follows clean architecture principles by decoupling the core engine from specific implementations:
+`go-clean-app` provides adapters to run the same business logic in different environments:
 
-- **`application`**: Defines the `Application` interface and provides the default `Engine`.
-- **`logger`**: Defines the `Logger` interface to keep the application logic agnostic of the logging library.
-- **`lifecycle`**: Manages the application state and shutdown hooks.
-- **`errors`**: Centralized error constants for the library.
-
-## 📚 API Reference
-
-### Application Interface
-
+### Local HTTP Server
+Ideal for local development or Docker-based deployments.
 ```go
-type Application interface {
-	Gracefull() lifecycle.Lifecycle
-	Logger() logger.Logger
-	Name() string
-	Version() string
-	Env() string
-	Debug() bool
-	Context() context.Context
-}
+server := local.NewAdapter(handler, 8080)
+server.Start()
 ```
 
-### Engine Methods
+### AWS Lambda (API Gateway)
+Perfect for serverless deployments on AWS. It uses `aws-lambda-go-api-proxy` to wrap your standard `http.Handler`.
+```go
+import "github.com/deadelus/go-clean-app/v2/transport/adapter/apigateway"
 
-- `Gracefull()`: Returns the `Lifecycle` manager to register shutdown hooks and wait for shutdown completion (with `Done()`).
-- `Context()`: Returns the application context that is canceled when the app shuts down.
-- `Logger()`: Returns the configured logger instance.
+lambdaAdapter := apigateway.NewAdapter(handler)
+lambdaAdapter.Start()
+```
+
+## 🏗 Project Structure
+
+- `application/`: Core engine and configuration options.
+- `lifecycle/`: Graceful shutdown management.
+- `logger/`: Generic logging interface and Zap implementation.
+- `transport/`: Abstractions for HTTP, Lambda, and more.
+- `errors/`: Custom error handling utilities.
 
 ## 📄 License
 

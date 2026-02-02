@@ -14,6 +14,7 @@ type ZapLogger struct {
 	Logger *zap.Logger
 }
 
+// Gracefull is a function type for graceful shutdown callbacks.
 type Gracefull func() error
 
 // BuildConfig is a helper to allow testing config.Build() errors
@@ -24,7 +25,7 @@ var BuildConfig = func(appDebug bool) zap.Config {
 	return zap.NewProductionConfig()
 }
 
-// NewZapLogger creates a new ZapLogger instance.
+// NewLogger creates a new ZapLogger instance.
 // It initializes the zap logger and returns a ZapLogger instance.
 // If there is an error during initialization, it returns the error.
 func NewLogger(
@@ -74,7 +75,7 @@ func NewLogger(
 	return zl, gracefull, nil
 }
 
-// GetFromExternalZapLogger sets the zap logger for the ZapLogger instance.
+// GetFromExternalLogger sets the zap logger for the ZapLogger instance.
 func GetFromExternalLogger(logger *zap.Logger) (*ZapLogger, Gracefull, error) {
 	zl := &ZapLogger{Logger: logger}
 

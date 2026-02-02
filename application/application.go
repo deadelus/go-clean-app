@@ -1,4 +1,4 @@
-// Package context provides the application context and lifecycle management.
+// Package application provides the application context and lifecycle management.
 package application
 
 import (
@@ -20,6 +20,14 @@ const (
 	LoggerModeEnvName = "APP_ENV"
 	// AppDebugEnvName is the environment variable name for the debug mode.
 	AppDebugEnvName = "APP_DEBUG"
+	// EnvDevelopment represents the development environment.
+	EnvDevelopment = "development"
+	// EnvProduction represents the production environment.
+	EnvProduction = "production"
+	// EnvStaging represents the staging environment.
+	EnvStaging = "staging"
+	// EnvTesting represents the testing environment.
+	EnvTesting = "testing"
 )
 
 // Application interface defines the methods for the application context.
@@ -84,7 +92,7 @@ func New(options ...Option) (*Engine, error) {
 	}
 
 	if engine.appVersion == "" {
-		engine.appVersion = "0.1.0"
+		engine.appVersion = "2.1.0"
 	}
 
 	if engine.appEnv == "" {
